@@ -59,7 +59,8 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
                 const char *fileName = doc["file_name"];
                 const int remainingFiles = (int)doc["remaining_files"];
                 const int numberOfPages = (int)doc["number_of_pages"];
-                showFileInfo(fileName, numberOfPages);
+                numberOfPagesGlobal = numberOfPages;
+                showFileInfo(fileName, numberOfPagesGlobal);
             }
             else
             {

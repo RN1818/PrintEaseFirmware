@@ -6,6 +6,7 @@
 #define WHITE TFT_WHITE
 #define BLACK TFT_BLACK
 #define BLUE TFT_BLUE
+#define GREEN TFT_GREEN
 #define RED TFT_RED
 #define X_OFFSET 10
 #define Y_OFFSET 10
@@ -13,8 +14,12 @@
 
 TFT_eSPI tft = TFT_eSPI();
 int previousSelection = -1;
+String previousTitle = "";
 int width;
 int height;
+int pageSelectionLabelWidth;
+int previousStartPage = 0;
+int previousEndPage = 0;
 
 void Pad(int pixels);
 
@@ -63,7 +68,11 @@ void highlight(TFTMessage message, int selection)
     tft.setFreeFont(&FreeSans18pt7b);
     int textHeight = tft.fontHeight();
     int highlightY = Y_OFFSET + textHeight * (selection + 1.3);
-
+    String title = message.title;
+    if (title != previousTitle)
+    {
+        previousSelection = -1;
+    }
     if (previousSelection != -1 && previousSelection != selection)
     {
         int oldY = Y_OFFSET + textHeight * (previousSelection + 1.3);
@@ -82,10 +91,12 @@ void highlight(TFTMessage message, int selection)
     tft.println(message.selections[selection]);
 
     previousSelection = selection;
+    previousTitle = title;
 }
 
 
-void updateDisplay(TFTMessage message) {
+void updateDisplay(TFTMessage message)
+{
     tft.fillScreen(WHITE);
     tft.setTextColor(BLACK);
     tft.setFreeFont(&FreeSansBold18pt7b);
@@ -109,14 +120,8 @@ void updateDisplay(TFTMessage message) {
 
 void Pad(int pixels)
 {
-    int spaceWidth = tft.textWidth("e");
-    int selectionPadding = pixels / spaceWidth;
-    String padding = " ";
-    for (int i = 0; i < selectionPadding; i++)
-    {
-        padding += " ";
-    }
-    tft.print(padding);
+    int y = tft.getCursorY();
+    tft.setCursor(pixels, y);
 }
 
 
@@ -181,6 +186,7 @@ void showFileInfo(const char *fileName, int numberOfPages)
     tft.println("Press Enter to continue...");
 }
 
+
 void showError(const char *message)
 {
     tft.setFreeFont(&FreeSansBold12pt7b);
@@ -193,4 +199,61 @@ void showError(const char *message)
 
     int textHeight = tft.fontHeight();
     tft.fillRect(0, height - textHeight - Y_OFFSET * 1.5, width, textHeight + Y_OFFSET * 1.5, WHITE);
+}
+
+
+void showPageRangeOptions()
+{
+    tft.fillScreen(WHITE);
+    tft.setTextColor(BLACK);
+    tft.setFreeFont(&FreeSansBold18pt7b);
+    tft.setCursor(X_OFFSET, Y_OFFSET + tft.fontHeight());
+    tft.println("Select the page range:");
+    tft.println("");
+
+    tft.setFreeFont(&FreeSans18pt7b);
+
+    pageSelectionLabelWidth = tft.textWidth("Start page");
+    Pad(SELECTION_OFFSET);
+    tft.print("Start page");
+    tft.println(": ");
+    tft.println("");
+    Pad(SELECTION_OFFSET);
+    tft.print("End page");
+    Pad(pageSelectionLabelWidth + SELECTION_OFFSET);
+    tft.print(": ");
+  }
+
+
+void getPageRangeOptions(int pageSelection, int startPage, int endPage)
+{
+    tft.setTextColor(BLACK);
+    tft.setFreeFont(&FreeSans18pt7b);
+    int textHeight = tft.fontHeight();
+
+    if (pageSelection == 0)
+    {
+        if (startPage == previousStartPage)
+        {
+            return;
+        }
+    }
+    else
+    {
+        if (endPage == previousEndPage)
+        {
+            return;
+        }
+    }
+
+    int valueX = SELECTION_OFFSET + pageSelectionLabelWidth + 20;
+    int valueY = Y_OFFSET + textHeight * (2.3 + pageSelection * 2);
+
+    tft.fillRect(valueX, valueY, width - valueX, textHeight, WHITE);
+    tft.setCursor(valueX, valueY + textHeight * 0.7);
+    tft.println(pageSelection == 0 ? String(startPage) : String(endPage));
+
+    previousStartPage = startPage;
+    previousEndPage = endPage;
+    return;
 }

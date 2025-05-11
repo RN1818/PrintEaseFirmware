@@ -13,3 +13,4 @@ enum SystemState {
 
 extern std::atomic <SystemState> currentState;
 extern const char* ID;
+extern int numberOfPagesGlobal;

@@ -20,3 +20,5 @@ void updateDisplay(TFTMessage message);
 void showQR(const char *url);
 void showFileInfo(const char *fileName, int numberOfPages);
 void showError(const char *message);
+void showPageRangeOptions();
+void getPageRangeOptions(int selection = 0, int startPage = 0, int endPage = 0);

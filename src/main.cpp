@@ -25,6 +25,8 @@ void setup()
     message.selections[2] = "A3";
     message.selections[3] = "Letter";
     message.selections[4] = "Legal";
+
+    showSplashScreen();
 }
 
 void loop() 
@@ -35,14 +37,18 @@ void loop()
     switch (currentState)
     {
         case STATE_SPLASH:
-            showSplashScreen();
             delay(2000);
             currentState = STATE_WAIT_FOR_URL;
             break;
 
         case STATE_PROCESSING:
             handleProcessing(key);
+            break;
 
+        case STATE_SEND_SETTINGS:
+            showSplashScreen("Printing...");
+            currentState = STATE_SPLASH;
+            break;
     }
 }
     

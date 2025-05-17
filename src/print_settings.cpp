@@ -5,16 +5,9 @@
 enum ProcessingPhase {
     NotStarted,
     Running,
-    Done
-};
-
-struct Settings {
-    String paperSize = "A4";
-    int orientation = 0;
-    int mode = 0;
-    String range = "all";
-    int color = 0;
-    int copies = 1;
+    Confirm,
+    Done,
+    Discard
 };
 
 char keys[ROWS][COLS] = {
@@ -29,17 +22,11 @@ Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 byte rowPins[ROWS] = {39, 36, 34, 35, 23};
 byte colPins[COLS] = {16, 17, 19, 22};
 
-String availablePaperSizes[5] = {"A4", "A3", "A5", "Letter", "Legal"};
-String availableOrientations[2] = {"Portrait", "Landscape"};
-String availableModes[2] = {"Double-sided", "Single-sided"};
-String availablePageRanges[2] = {"All", "Set page range"};
-String availableColors[2] = {"Black and White", "Full Color"};
-
 static ProcessingPhase processingPhase = NotStarted;
 static bool processingComplete = false;
 bool isScreenUpdated = false;
 bool isStageCompleted = true;
-Settings printSettings;
+bool isPrintSettingsShown = false;
 static int inputPhase = 0;
 
 bool getPaperSize(char key);
@@ -48,8 +35,9 @@ bool getMode(char key);
 bool getPageRange(char key);
 bool getColor(char key);
 bool getCopies(char key);
+bool getConfirmation(char key);
 void getPrintSettings(char key);
-void getPageNumber(int stage, int value, int selectedPageBuffer[2]);
+void getPageNumber(int stage, int value, int selectedPageBuffer[2], bool *isFirstDigit);
 
 
 void handleProcessing(char key)
@@ -63,29 +51,69 @@ void handleProcessing(char key)
                 inputPhase = 0;
                 Serial.println("Processing phase started.");
             }
+            else if (key == 'P')
+            {
+                processingPhase = Confirm;
+            }
             break;
 
         case Running:
-            if (processingComplete) {
-                processingPhase = Done;
+            if (processingComplete)
+            {
+                processingPhase = Confirm;
                 Serial.println("Processing completed.");
                 break;
             }
             getPrintSettings(key);
             break;
+        
+        case Confirm:
+            if (getConfirmation(key))
+            {
+                processingPhase = Done;
+                Serial.println("Confirmed print settings.");
+                break;
+            }
+            break;
 
         case Done:
-            currentState = STATE_CONFIRM_PRINT;
             processingPhase = NotStarted;
             processingComplete = false;
+            Serial.println("Printing...");
+            currentState = STATE_SEND_SETTINGS;
+            break;
+
+        case Discard:
+            processingPhase = NotStarted;
+            processingComplete = false;
+            currentState = STATE_SPLASH;
+            Serial.println("Discarded print settings.");
+            showSplashScreen("Printing canceled by user.");
             break;
     }
 }
 
 
+bool getConfirmation(char key)
+{   
+    if (!isPrintSettingsShown)
+    {
+        showPrintSettings();
+        isPrintSettingsShown = true;
+    }
+    switch (key)
+    {
+        case 'E':
+            return true;
+        case 'C':
+            processingPhase = Discard;
+            return false;
+    }
+    return false;
+}
+
 void getPrintSettings(char key)
 {
-    bool settingsUpdated = false;
     switch (key)
     {
         case 'P':
@@ -101,6 +129,7 @@ void getPrintSettings(char key)
             if (isStageCompleted)
             {
                 inputPhase++;
+                Serial.println(String("Input phase:") + inputPhase);
                 isScreenUpdated = false;
                 return;
             }
@@ -125,10 +154,9 @@ void getPrintSettings(char key)
             break;
         case 5:
             getCopies(key);
-    }
-    if (settingsUpdated)
-    {
-        inputPhase++;
+            break;
+        case 6:
+            processingComplete = true;
     }
 }
 
@@ -226,10 +254,11 @@ bool getMode(char key)
 bool getPageRange(char key)
 {
     static TFTMessage message;
-    static int selectedPageBuffer[2] = {0, 0};
+    static int selectedPageBuffer[2] = {1, 1};
     static bool manuallySetRange = false;
     static int stage = -1;
     static bool isPageRangeOptionsShown = false;
+    static bool isFirstDigit = true;
 
     if (!isScreenUpdated)
     {   
@@ -251,39 +280,44 @@ bool getPageRange(char key)
             {
                 if (!isPageRangeOptionsShown)
                 {
-                    showPageRangeOptions();
-                    isPageRangeOptionsShown = true;
                     stage = 0;
+                    showPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
+                    isPageRangeOptionsShown = true;
                     return false;
                 }
-            }  
+            }
+            if (key == 'C')
+            {
+                if (isPageRangeOptionsShown)
+                {   
+                    selectedPageBuffer[stage] = 1;
+                    isFirstDigit = true;
+                    getPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
+                }
+                return false;
+            }
             switch (stage)
             {
                 case 0:
                     if (key == 'E')
                     {
-                        if (selectedPageBuffer[0] == 0)
-                        {
-                            showError("Select a valid page number");
-                            return false;
-                        }
                         stage++;
+                        showPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
+                        isFirstDigit = true;
+                        return false;
                     }
-                    getPageNumber(0, value, selectedPageBuffer);
+                    getPageNumber(0, value, selectedPageBuffer, &isFirstDigit);
                     break;
 
                 case 1:
                     if (key == 'E')
                     {
-                        if (selectedPageBuffer[1] == 0 && selectedPageBuffer[0] != 0)
-                        {
-                            showError("Select a valid page number");
-                            return false;
-                        }
                         if (selectedPageBuffer[1] < selectedPageBuffer[0])
                         {
                             showError("End page is before start page");
-                            selectedPageBuffer[1] = 0;
+                            selectedPageBuffer[1] = 1;
+                            isFirstDigit = true;
+                            getPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
                             return false;
                         }
                         printSettings.range = String(selectedPageBuffer[0] + "-" + selectedPageBuffer[1]);
@@ -294,15 +328,14 @@ bool getPageRange(char key)
                         isPageRangeOptionsShown = false;
                         isStageCompleted = true;
                         isScreenUpdated = false;
+                        isFirstDigit = true;
                         inputPhase++;
 
                         return true;
                     }
-                    getPageNumber(1, value, selectedPageBuffer);
+                    getPageNumber(1, value, selectedPageBuffer, &isFirstDigit);
                     break;
             }
-            
-
         }
         else
         {
@@ -320,7 +353,7 @@ bool getPageRange(char key)
             }
             else
             {
-                printSettings.range = "all";
+                printSettings.range = "All";
                 return true;
             }
         }
@@ -361,11 +394,77 @@ bool getColor(char key)
 
 bool getCopies(char key)
 {
+    static TFTMessage message;
+    static int copies = 1;
+    static int isFirstDigit = true;
+    isStageCompleted = false;
+
+    if (!isScreenUpdated)
+    {   
+        message.title = "Number of copies:";
+        updateDisplay(message);
+        showCopies(copies);
+        isScreenUpdated = true;
+    }
+    if (key)
+    {
+        int value = key - '0';
+        if (key == 'E')
+        {
+            if (copies == 0)
+            {
+                showError("Cannot print 0 copies");
+                copies = 1;
+                showCopies(copies);
+                return false;
+            }
+            copies = 1;
+            isStageCompleted = true;
+            inputPhase++;
+            return true;
+        } 
+        else if (key == 'C')
+        {
+            copies = 1;
+            isFirstDigit = true;
+            showCopies(copies);
+        }
+        else
+        {
+            if (value < 0 || value > 9)
+            {
+                showError("Invalid Selection");
+                return false;
+            }
+            if (isFirstDigit)
+            {
+                if (value == 0)
+                {
+                    showError("The first digit cannot be 0");
+                    return false;
+                }
+                copies = value;
+                isFirstDigit = false;
+                showCopies(copies);
+                return false;
+            }
+            copies = copies * 10 + value;
+            if (copies > MAX_NUM_COPIES)
+            {
+                showError("Maximum number of copies is 1000");
+                copies = 1;
+                showCopies(copies);
+                isFirstDigit = true;
+                return false;
+            }
+            showCopies(copies);
+        }
+    }
     return false;
 }
 
 
-void getPageNumber(int stage, int value, int selectedPageBuffer[2])
+void getPageNumber(int stage, int value, int selectedPageBuffer[2], bool *isFirstDigit)
 {
     if ((value < 0 || value > 9) && value != 'E')
     {
@@ -374,13 +473,24 @@ void getPageNumber(int stage, int value, int selectedPageBuffer[2])
     }
     else
     {
+        if (*isFirstDigit)
+        {
+            if (value == 0)
+            {
+                showError("The first digit cannot be 0");
+                return;
+            }
+            selectedPageBuffer[stage] = value;
+            *isFirstDigit = false;
+            getPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
+            return;
+        }
         selectedPageBuffer[stage] = selectedPageBuffer[stage] * 10 + value;
-        Serial.println("Page Buffer " + String(stage) + ": " + String(selectedPageBuffer[stage]));
-        Serial.println("Number of pages " + String(numberOfPagesGlobal));
         if (selectedPageBuffer[stage] > numberOfPagesGlobal)
         {
             showError("Page number out of range");
-            selectedPageBuffer[stage] = 0;
+            selectedPageBuffer[stage] = 1;
+            *isFirstDigit = true;
         }
         getPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
     }

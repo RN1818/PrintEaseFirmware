@@ -320,6 +320,9 @@ void showPrintSettings()
     tft.print(": ");
     tft.setTextColor(BLUE);
     tft.println(availableOrientations[printSettings.orientation]);
+    Serial.println(availableOrientations[0]);
+    Serial.println(availableOrientations[1]);
+    Serial.println(printSettings.orientation);
 
     Pad(X_OFFSET);
     tft.setTextColor(BLACK);
@@ -352,4 +355,18 @@ void showPrintSettings()
     tft.print(": ");
     tft.setTextColor(BLUE);
     tft.println(printSettings.copies);
+
+    Pad(X_OFFSET);
+    tft.setTextColor(BLACK);
+    tft.print("Price");
+    Pad(selectionWidth);
+    tft.print(": ");
+    tft.setTextColor(BLUE);
+    tft.print("Rs. ");
+    tft.println(String(printSettings.price, 2));
+
+    tft.setTextColor(BLUE);
+    tft.setFreeFont(&FreeSansBold12pt7b);
+    Pad((width - tft.textWidth("Press Enter to Confirm."))/2);
+    tft.println("Press Enter to Confirm.");
 }

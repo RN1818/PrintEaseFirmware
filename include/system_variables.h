@@ -19,15 +19,18 @@ struct Settings {
     String range = "All";
     int color = 0;
     int copies = 1;
+    float price = 0;
 };
 
 extern Settings printSettings;
 extern std::atomic <SystemState> currentState;
 extern const char* ID;
 extern int numberOfPagesGlobal;
+extern int reaminingFilesGlobal;
+extern unsigned long MAX_WAIT_TIME;
 
-extern String availablePaperSizes[5];
-extern String availableOrientations[2];
-extern String availableModes[2];
-extern String availablePageRanges[2];
-extern String availableColors[2];
+extern const char *availablePaperSizes[5];
+extern const char *availableOrientations[2];
+extern const char *availableModes[2];
+extern const char *availablePageRanges[2];
+extern const char *availableColors[2];

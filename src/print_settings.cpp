@@ -1,6 +1,8 @@
 #include "print_settings.h"
 #include "system_variables.h"
 #include "display_handler.h"
+#include "websocket_handler.h"
+#include "file_handler.h"
 
 enum ProcessingPhase {
     NotStarted,
@@ -49,7 +51,7 @@ void handleProcessing(char key)
             {
                 processingPhase = Running;
                 inputPhase = 0;
-                Serial.println("Processing phase started.");
+                return;
             }
             else if (key == 'P')
             {
@@ -79,6 +81,7 @@ void handleProcessing(char key)
         case Done:
             processingPhase = NotStarted;
             processingComplete = false;
+            isPrintSettingsShown = false;
             Serial.println("Printing...");
             currentState = STATE_SEND_SETTINGS;
             break;
@@ -86,9 +89,18 @@ void handleProcessing(char key)
         case Discard:
             processingPhase = NotStarted;
             processingComplete = false;
-            currentState = STATE_SPLASH;
+            isPrintSettingsShown = false;
+            sendDiscard();
             Serial.println("Discarded print settings.");
             showSplashScreen("Printing canceled by user.");
+            if (reaminingFilesGlobal > 0)
+            {
+                currentState = STATE_WAIT_FOR_FILE;
+            }
+            else
+            {
+                currentState = STATE_SPLASH;
+            }
             break;
     }
 }
@@ -97,7 +109,8 @@ void handleProcessing(char key)
 bool getConfirmation(char key)
 {   
     if (!isPrintSettingsShown)
-    {
+    {   
+        calculatePrice();
         showPrintSettings();
         isPrintSettingsShown = true;
     }
@@ -111,6 +124,7 @@ bool getConfirmation(char key)
     }
     return false;
 }
+
 
 void getPrintSettings(char key)
 {
@@ -129,7 +143,6 @@ void getPrintSettings(char key)
             if (isStageCompleted)
             {
                 inputPhase++;
-                Serial.println(String("Input phase:") + inputPhase);
                 isScreenUpdated = false;
                 return;
             }
@@ -162,14 +175,15 @@ void getPrintSettings(char key)
 
 
 bool getPaperSize(char key)
-{
+{   
     static TFTMessage message;
     if (!isScreenUpdated)
     {   
+        Serial.println("Updating paper size screen");
         message.title = "Select the paper size:";
         for (int i = 0; i < 5; i++)
         {
-            message.selections[i] = availablePaperSizes[i].c_str();
+            message.selections[i] = availablePaperSizes[i];
         }
         updateDisplay(message);
         highlight(message, 0);
@@ -184,7 +198,7 @@ bool getPaperSize(char key)
             return false;
         }
         highlight(message, value - 1);
-        printSettings.paperSize = availablePaperSizes[value - 1];
+        printSettings.paperSize = String(availablePaperSizes[value - 1]);
         return true;
     }
     return false;
@@ -199,7 +213,7 @@ bool getOrientation(char key)
         message.title = "Select the orientation:";
         for (int i = 0; i < 2; i++)
         {
-            message.selections[i] = availableOrientations[i].c_str();
+            message.selections[i] = availableOrientations[i];
         }
         updateDisplay(message);
         highlight(message, 0);
@@ -214,7 +228,7 @@ bool getOrientation(char key)
             return false;
         }
         highlight(message, value - 1);
-        printSettings.orientation = value;
+        printSettings.orientation = value - 1;
         return true;
     }
     return false;
@@ -229,7 +243,7 @@ bool getMode(char key)
         message.title = "Select the mode:";
         for (int i = 0; i < 2; i++)
         {
-            message.selections[i] = availableModes[i].c_str();
+            message.selections[i] = availableModes[i];
         }
         updateDisplay(message);
         highlight(message, 0);
@@ -244,7 +258,8 @@ bool getMode(char key)
             return false;
         }
         highlight(message, value - 1);
-        printSettings.mode = value;
+        printSettings.mode = value - 1;
+        Serial.println("Mode: " + String(availableModes[printSettings.mode]));
         return true;
     }
     return false;
@@ -265,7 +280,7 @@ bool getPageRange(char key)
         message.title = "Select the page range:";
         for (int i = 0; i < 2; i++)
         {
-            message.selections[i] = availablePageRanges[i].c_str();
+            message.selections[i] = availablePageRanges[i];
         }
         updateDisplay(message);
         highlight(message, 0);
@@ -320,7 +335,7 @@ bool getPageRange(char key)
                             getPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
                             return false;
                         }
-                        printSettings.range = String(selectedPageBuffer[0] + "-" + selectedPageBuffer[1]);
+                        printSettings.range = String(selectedPageBuffer[0]) + "-" + String(selectedPageBuffer[1]);
                         selectedPageBuffer[0] = 0;
                         selectedPageBuffer[1] = 0;
                         stage = -1;
@@ -330,7 +345,6 @@ bool getPageRange(char key)
                         isScreenUpdated = false;
                         isFirstDigit = true;
                         inputPhase++;
-
                         return true;
                     }
                     getPageNumber(1, value, selectedPageBuffer, &isFirstDigit);
@@ -370,7 +384,7 @@ bool getColor(char key)
         message.title = "Select color mode:";
         for (int i = 0; i < 2; i++)
         {
-            message.selections[i] = availableColors[i].c_str();
+            message.selections[i] = availableColors[i];
         }
         updateDisplay(message);
         highlight(message, 0);
@@ -385,7 +399,8 @@ bool getColor(char key)
             return false;
         }
         highlight(message, value - 1);
-        printSettings.mode = value;
+        printSettings.color = value - 1;
+        Serial.println("Color: " + String(availableColors[printSettings.color]));
         return true;
     }
     return false;
@@ -421,6 +436,8 @@ bool getCopies(char key)
             copies = 1;
             isStageCompleted = true;
             inputPhase++;
+            isScreenUpdated = false;
+            Serial.println("Copies: " + String(printSettings.copies));
             return true;
         } 
         else if (key == 'C')
@@ -457,6 +474,7 @@ bool getCopies(char key)
                 isFirstDigit = true;
                 return false;
             }
+            printSettings.copies = copies;
             showCopies(copies);
         }
     }

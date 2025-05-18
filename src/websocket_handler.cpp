@@ -2,9 +2,10 @@
 #include "websocket_handler.h"
 #include "print_settings.h"
 #include "display_handler.h"
-//#include "file_handler.h"
+#include "file_handler.h"
 
 const int wsPort = 81;
+uint8_t client;
 
 WebSocketsServer webSocket(wsPort);
 
@@ -14,6 +15,10 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
     {
         case WStype_CONNECTED:
             Serial.printf("[%u] Connection Established\n", clientNum);
+            if (currentState == STATE_WAIT_FOR_URL)
+            {
+                showSplashScreen("Connected to the server.");
+            }
             break;
 
         case WStype_DISCONNECTED:
@@ -22,7 +27,7 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
         
         case WStype_TEXT:
             String message = (char*)payload;
-            DynamicJsonDocument doc(1024);
+            DynamicJsonDocument doc(2048);
             DeserializationError error = deserializeJson(doc, message);
             Serial.println(message);
             if (error) {
@@ -30,22 +35,48 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
                 return;
             }
 
-            const char* id = doc["id"];
+            if (doc.isNull() || !doc.is<JsonObject>()) {
+                Serial.println("Invalid JSON");
+                return;
+            }
+
+            const char *id = nullptr; 
+            if (doc.containsKey("id") && doc["id"].is<const char*>())
+            {
+                id = doc["id"];
+            }
+            else
+            {
+                Serial.println("Invalid ID");
+                return;
+            }
+
             if (strcmp(id, ID) != 0)
             {
                 Serial.printf("Invalid ID: %s\n", id);
                 return;
             }
 
-            const char* action = doc["action"];
+            const char* action = nullptr; 
+            if (doc.containsKey("action") && doc["action"].is<const char*>())
+            {
+                action = doc["action"];
+            }
+            else
+            {
+                Serial.println("Error: Missing or invalid 'action' field");
+                return;
+            }
+
             if (strcmp(action, "PRINT_RATES") == 0)
             {   
                 webSocket.sendTXT(clientNum, "{\"ACK\":\"PRINT_RATES\"}");
-                //getRates(doc);
+                storeRates(doc);
                 return;
             }
             else if (strcmp(action, "FILE_UPLOAD_URL") == 0 && currentState == STATE_WAIT_FOR_URL)
             {   
+                client = clientNum;
                 currentState = STATE_WAIT_FOR_FILE;
                 webSocket.sendTXT(clientNum, "{\"ACK\":\"FILE_UPLOAD_URL\"}");
                 const char *url = doc["url"];
@@ -55,12 +86,7 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
             else if (strcmp(action, "INPUT_PRINT_SETTINGS") == 0 && currentState == STATE_WAIT_FOR_FILE)
             {   
                 currentState = STATE_PROCESSING;
-                webSocket.sendTXT(clientNum, "{\"ACK\":\"INPUT_PRINT_SETTINGS\"}");
-                const char *fileName = doc["file_name"];
-                const int remainingFiles = (int)doc["remaining_files"];
-                const int numberOfPages = (int)doc["number_of_pages"];
-                numberOfPagesGlobal = numberOfPages;
-                showFileInfo(fileName, numberOfPagesGlobal);
+                processFile(doc);
             }
             else
             {
@@ -72,13 +98,50 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
     }
 }
 
+
 void initWebSocket()
 {
     webSocket.begin();
     webSocket.onEvent(webSocketEvent);
 }
 
+
 void handleWebSocket()
 {
     webSocket.loop();
+}
+
+
+void sendTimeout()
+{
+    webSocket.sendTXT(client, "{\"status\":\"TIMEOUT\"}");
+}
+
+
+void sendDiscard()
+{
+    webSocket.sendTXT(client, "{\"status\":\"DISCARDED\"}");
+}
+
+
+void sendPrintSettings()
+{
+    DynamicJsonDocument doc(512);
+
+    doc["status"] = "PRINT_SETTINGS";
+    JsonObject settings = doc.createNestedObject("settings");
+
+    settings["paper_size"] = printSettings.paperSize;
+    settings["orientation"] = printSettings.orientation;
+    settings["mode"] = printSettings.mode;
+    settings["page_range"] = printSettings.range;
+    settings["color"] = printSettings.color;
+    settings["copies"] = printSettings.copies;
+    settings["price"] = printSettings.price;
+
+    String message;
+    serializeJson(doc, message);
+
+    webSocket.sendTXT(client, message);
+    Serial.println(message);
 }

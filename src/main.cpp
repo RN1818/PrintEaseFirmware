@@ -11,6 +11,8 @@
 TFTMessage message;
 bool processingInitiated = false;
 bool processingComplete = false;
+bool isTimerStarted = false;
+unsigned long startWaitingTime = 0;
 
 void setup()
 {
@@ -42,12 +44,36 @@ void loop()
             break;
 
         case STATE_PROCESSING:
+            if (!isTimerStarted)
+            {
+                startWaitingTime = millis();
+                isTimerStarted = true;
+            }
+            else if (millis() - startWaitingTime >= MAX_WAIT_TIME)
+            {
+                sendTimeout();
+                showSplashScreen("Time out.");
+                isTimerStarted = false;
+                currentState = STATE_SPLASH;
+                return;
+            }
             handleProcessing(key);
             break;
 
         case STATE_SEND_SETTINGS:
             showSplashScreen("Printing...");
-            currentState = STATE_SPLASH;
+            sendPrintSettings();
+            isTimerStarted = false;
+            if (reaminingFilesGlobal > 0)
+            {
+                currentState = STATE_WAIT_FOR_FILE;
+            }
+            else
+            {
+                delay(2000);
+                showSplashScreen("Thank you for using PrintEase!");
+                currentState = STATE_SPLASH;
+            }
             break;
     }
 }

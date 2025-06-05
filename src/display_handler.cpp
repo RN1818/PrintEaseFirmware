@@ -4,6 +4,7 @@
 
 #define LIGHT_BLUE 0x073F
 #define LIGHT_GREEN 0x2F0D
+#define DARK_GREEN 0x0ce5
 #define WHITE TFT_WHITE
 #define BLACK TFT_BLACK
 #define BLUE TFT_BLUE
@@ -60,6 +61,57 @@ void showSplashScreen(const char *message)
         tft.setCursor((width - messageWidth)/2, 250);
         tft.print(message);
     }
+}
+
+
+void showLocation(String message)
+{   
+    tft.fillScreen(WHITE);
+    tft.setFreeFont(&FreeSansBold18pt7b);
+    tft.setTextColor(BLUE);
+    const char *name = "PrintEase Solutions";
+    int nameWidth = tft.textWidth(name);
+    tft.setCursor((width - nameWidth)/2, 100);
+    tft.print(name);
+
+    tft.setFreeFont(&FreeSansBold12pt7b);
+    const char *note;
+    const char *location;
+    const char *finalNote;
+    int finalNotePosition = 250;
+
+    if (message == "None")
+    {
+        tft.setTextColor(RED);
+        note = "Sorry. We couldn't find a suitable printer.";
+        finalNote = "Please try again";
+    }
+    else
+    {
+        tft.setTextColor(DARK_GREEN);
+        note = "Please collect your document at";
+        location = message.c_str();
+        finalNotePosition = 270;
+        finalNote = "Thank you for using PrintEase!";
+    }
+
+    int noteWidth = tft.textWidth(note);
+    tft.setCursor((width - noteWidth)/2, 175);
+    tft.print(note);
+
+    if (message != "None")
+    {
+        tft.setFreeFont(&FreeSansBold18pt7b);
+        int locationWidth = tft.textWidth(location);
+        tft.setCursor((width - locationWidth)/2, 220);
+        tft.print(location);
+    }
+
+    tft.setFreeFont(&FreeSansBold12pt7b);
+    tft.setTextColor(BLACK);
+    int finalNoteWidth = tft.textWidth(finalNote);
+    tft.setCursor((width - finalNoteWidth)/2, finalNotePosition);
+    tft.print(finalNote);
 }
 
 

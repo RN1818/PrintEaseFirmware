@@ -68,9 +68,15 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
                 return;
             }
 
-            if (strcmp(action, "PRINT_RATES") == 0)
+            if (strcmp(action, "RESET") == 0)
             {   
-                webSocket.sendTXT(clientNum, "{\"ACK\":\"PRINT_RATES\"}");
+                currentState = STATE_SPLASH;
+                reaminingFilesGlobal = 0;
+                showSplashScreen("Reset command received");
+                return;
+            }
+            else if (strcmp(action, "PRINT_RATES") == 0)
+            {   
                 storeRates(doc);
                 return;
             }
@@ -78,7 +84,6 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
             {   
                 client = clientNum;
                 currentState = STATE_WAIT_FOR_FILE;
-                webSocket.sendTXT(clientNum, "{\"ACK\":\"FILE_UPLOAD_URL\"}");
                 const char *url = doc["url"];
                 showQR(url);
                 return;
@@ -87,6 +92,11 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
             {   
                 currentState = STATE_PROCESSING;
                 processFile(doc);
+            }
+            else if (strcmp(action, "PRINTER_ID") == 0 && currentState == STATE_SEND_SETTINGS)
+            {
+                const char *id = doc["printer_id"];
+                printerID = String(id);
             }
             else
             {
@@ -138,10 +148,10 @@ void sendPrintSettings()
     settings["color"] = printSettings.color;
     settings["copies"] = printSettings.copies;
     settings["price"] = printSettings.price;
+    settings["papers"] = printSettings.papers;
 
     String message;
     serializeJson(doc, message);
-
     webSocket.sendTXT(client, message);
     Serial.println(message);
 }

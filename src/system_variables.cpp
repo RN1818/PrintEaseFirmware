@@ -6,6 +6,7 @@ int numberOfPagesGlobal = 1;
 int reaminingFilesGlobal = 0;
 Settings printSettings;
 unsigned long MAX_WAIT_TIME = 1000 * 60 * 10;
+String printerID = "";
 
 const char *availablePaperSizes[5] = {"A4", "A3", "A5", "Letter", "Legal"};
 const char *availableOrientations[2] = {"Portrait", "Landscape"};

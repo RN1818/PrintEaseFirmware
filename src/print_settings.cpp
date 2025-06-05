@@ -15,9 +15,9 @@ enum ProcessingPhase {
 char keys[ROWS][COLS] = {
     {'1','2','3','S'},
     {'4','5','6','O'},
-    {'7','8','9','M'},
-    {'C','0','E','P'},
-    {'R','C','N','D'}
+    {'S','R','C','M'},
+    {'D','0','E','P'},
+    {'R','L','N','C'}
 };
 
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
@@ -40,6 +40,7 @@ bool getCopies(char key);
 bool getConfirmation(char key);
 void getPrintSettings(char key);
 void getPageNumber(int stage, int value, int selectedPageBuffer[2], bool *isFirstDigit);
+int getPaperSizeIndex(const char *target);
 
 
 void handleProcessing(char key)
@@ -112,15 +113,52 @@ bool getConfirmation(char key)
     {   
         calculatePrice();
         showPrintSettings();
+        Serial.println(printSettings.copies);
         isPrintSettingsShown = true;
     }
     switch (key)
     {
         case 'E':
             return true;
-        case 'C':
+        case 'D':
             processingPhase = Discard;
-            return false;
+            break;
+        case 'S':
+            inputPhase = 0;
+            processingPhase = Running;
+            processingComplete = false;
+            isPrintSettingsShown = false;
+            break;
+        case 'O':
+            inputPhase = 1;
+            processingPhase = Running;
+            processingComplete = false;
+            isPrintSettingsShown = false;
+            break;
+        case 'M':
+            inputPhase = 2;
+            processingPhase = Running;
+            processingComplete = false;
+            isPrintSettingsShown = false;
+            break;
+        case 'R':
+            inputPhase = 3;
+            processingPhase = Running;
+            processingComplete = false;
+            isPrintSettingsShown = false;
+            break;
+        case 'L':
+            inputPhase = 4;
+            processingPhase = Running;
+            processingComplete = false;
+            isPrintSettingsShown = false;
+            break;
+        case 'N':
+            inputPhase = 5;
+            processingPhase = Running;
+            processingComplete = false;
+            isPrintSettingsShown = false;
+            break;
     }
     return false;
 }
@@ -138,12 +176,53 @@ void getPrintSettings(char key)
             }
             processingComplete = true;
             return;
-
         case 'E':
             if (isStageCompleted)
             {
                 inputPhase++;
                 isScreenUpdated = false;
+                return;
+            }
+        case 'S':
+            if (isStageCompleted)
+            {
+                isScreenUpdated = false;
+                inputPhase = 0;
+                return;
+            }
+        case 'O':
+            if (isStageCompleted)
+            {
+                isScreenUpdated = false;
+                inputPhase = 1;
+                return;
+            }
+        case 'M':
+            if (isStageCompleted)
+            {
+                isScreenUpdated = false;
+                inputPhase = 2;
+                return;
+            }
+        case 'R':
+            if (isStageCompleted)
+            {
+                isScreenUpdated = false;
+                inputPhase = 3;
+                return;
+            }
+        case 'L':
+            if (isStageCompleted)
+            {
+                isScreenUpdated = false;
+                inputPhase = 4;
+                return;
+            }
+        case 'N':
+            if (isStageCompleted)
+            {
+                isScreenUpdated = false;
+                inputPhase = 5;
                 return;
             }
     }
@@ -179,14 +258,13 @@ bool getPaperSize(char key)
     static TFTMessage message;
     if (!isScreenUpdated)
     {   
-        Serial.println("Updating paper size screen");
         message.title = "Select the paper size:";
         for (int i = 0; i < 5; i++)
         {
             message.selections[i] = availablePaperSizes[i];
         }
         updateDisplay(message);
-        highlight(message, 0);
+        highlight(message, getPaperSizeIndex(printSettings.paperSize.c_str()));
         isScreenUpdated = true;
     }
     if (key)
@@ -216,7 +294,7 @@ bool getOrientation(char key)
             message.selections[i] = availableOrientations[i];
         }
         updateDisplay(message);
-        highlight(message, 0);
+        highlight(message, printSettings.orientation);
         isScreenUpdated = true;
     }
     if (key)
@@ -246,7 +324,7 @@ bool getMode(char key)
             message.selections[i] = availableModes[i];
         }
         updateDisplay(message);
-        highlight(message, 0);
+        highlight(message, printSettings.mode);
         isScreenUpdated = true;
     }
     if (key)
@@ -259,7 +337,6 @@ bool getMode(char key)
         }
         highlight(message, value - 1);
         printSettings.mode = value - 1;
-        Serial.println("Mode: " + String(availableModes[printSettings.mode]));
         return true;
     }
     return false;
@@ -283,7 +360,14 @@ bool getPageRange(char key)
             message.selections[i] = availablePageRanges[i];
         }
         updateDisplay(message);
-        highlight(message, 0);
+        if (printSettings.range == "All")
+        {
+            highlight(message, 0);
+        }
+        else
+        {
+            highlight(message, 1);
+        }
         isScreenUpdated = true;
     }
     if (key)
@@ -336,8 +420,8 @@ bool getPageRange(char key)
                             return false;
                         }
                         printSettings.range = String(selectedPageBuffer[0]) + "-" + String(selectedPageBuffer[1]);
-                        selectedPageBuffer[0] = 0;
-                        selectedPageBuffer[1] = 0;
+                        selectedPageBuffer[0] = 1;
+                        selectedPageBuffer[1] = 1;
                         stage = -1;
                         manuallySetRange = false;
                         isPageRangeOptionsShown = false;
@@ -387,7 +471,7 @@ bool getColor(char key)
             message.selections[i] = availableColors[i];
         }
         updateDisplay(message);
-        highlight(message, 0);
+        highlight(message, printSettings.color);
         isScreenUpdated = true;
     }
     if (key)
@@ -410,7 +494,7 @@ bool getColor(char key)
 bool getCopies(char key)
 {
     static TFTMessage message;
-    static int copies = 1;
+    static int copies = printSettings.copies;
     static int isFirstDigit = true;
     isStageCompleted = false;
 
@@ -433,11 +517,10 @@ bool getCopies(char key)
                 showCopies(copies);
                 return false;
             }
-            copies = 1;
+            isFirstDigit = true;
             isStageCompleted = true;
             inputPhase++;
             isScreenUpdated = false;
-            Serial.println("Copies: " + String(printSettings.copies));
             return true;
         } 
         else if (key == 'C')
@@ -463,6 +546,7 @@ bool getCopies(char key)
                 copies = value;
                 isFirstDigit = false;
                 showCopies(copies);
+                printSettings.copies = copies;
                 return false;
             }
             copies = copies * 10 + value;
@@ -498,6 +582,11 @@ void getPageNumber(int stage, int value, int selectedPageBuffer[2], bool *isFirs
                 showError("The first digit cannot be 0");
                 return;
             }
+            if (value > numberOfPagesGlobal)
+            {
+                showError("Page number out of range");
+                return;
+            }
             selectedPageBuffer[stage] = value;
             *isFirstDigit = false;
             getPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
@@ -513,4 +602,15 @@ void getPageNumber(int stage, int value, int selectedPageBuffer[2], bool *isFirs
         getPageRangeOptions(stage, selectedPageBuffer[0], selectedPageBuffer[1]);
     }
     return;
+}
+
+
+int getPaperSizeIndex(const char *target)
+{
+    for (int i = 0; i < 5; ++i) {
+        if (strcmp(availablePaperSizes[i], target) == 0) {
+            return i;
+        }
+    }
+    return -1;
 }

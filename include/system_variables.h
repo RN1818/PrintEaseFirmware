@@ -20,6 +20,7 @@ struct Settings {
     int color = 0;
     int copies = 1;
     float price = 0;
+    int papers = 0;
 };
 
 extern Settings printSettings;
@@ -27,6 +28,7 @@ extern std::atomic <SystemState> currentState;
 extern const char* ID;
 extern int numberOfPagesGlobal;
 extern int reaminingFilesGlobal;
+extern String printerID;
 extern unsigned long MAX_WAIT_TIME;
 
 extern const char *availablePaperSizes[5];

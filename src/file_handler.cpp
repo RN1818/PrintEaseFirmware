@@ -69,6 +69,7 @@ void calculatePrice()
         simplexSheets = numberOfPages;
     }
 
+    printSettings.papers = duplexSheets + simplexSheets;
     printSettings.price = (prices[paperSize][0][color] * duplexSheets + prices[paperSize][1][color] * simplexSheets) * copies;
 
     Serial.println("Paper Size: " + String(paperSize));

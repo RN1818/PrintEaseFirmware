@@ -12,6 +12,7 @@ TFTMessage message;
 bool processingInitiated = false;
 bool processingComplete = false;
 bool isTimerStarted = false;
+bool screenUpdated = false;
 unsigned long startWaitingTime = 0;
 
 void setup()
@@ -48,6 +49,15 @@ void loop()
             {
                 startWaitingTime = millis();
                 isTimerStarted = true;
+                printerID = "";
+
+                printSettings.paperSize = "A4";
+                printSettings.orientation = 0;
+                printSettings.mode = 0;
+                printSettings.color = 0;
+                printSettings.range = "All";
+                printSettings.price = 0;
+                printSettings.copies = 1;
             }
             else if (millis() - startWaitingTime >= MAX_WAIT_TIME)
             {
@@ -61,18 +71,26 @@ void loop()
             break;
 
         case STATE_SEND_SETTINGS:
-            showSplashScreen("Printing...");
-            sendPrintSettings();
-            isTimerStarted = false;
-            if (reaminingFilesGlobal > 0)
+            if (screenUpdated == false)
             {
-                currentState = STATE_WAIT_FOR_FILE;
+                showSplashScreen("Please wait...");
+                sendPrintSettings();
+                screenUpdated = true;
             }
-            else
-            {
-                delay(2000);
-                showSplashScreen("Thank you for using PrintEase!");
-                currentState = STATE_SPLASH;
+            if (printerID != "")
+            {   
+                showLocation(printerID.c_str());
+                isTimerStarted = false;
+                screenUpdated = false;
+                if (reaminingFilesGlobal > 0)
+                {
+                    currentState = STATE_WAIT_FOR_FILE;
+                }
+                else
+                {
+                    delay(4000);
+                    currentState = STATE_SPLASH;
+                }
             }
             break;
     }

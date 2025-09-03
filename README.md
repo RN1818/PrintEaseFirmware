@@ -58,6 +58,13 @@ PrintEaseFirmware is the embedded software for the PrintEase automated printing 
 - Use the touchscreen or physical interface to select print options.
 - Firmware will communicate with the backend and display job status.
 
+## Contributors
+
+- [Roshan Nimantha](https://github.com/RN1818)
+- [Praveen Samarasekara](https://github.com/RP-Samarasekara)
+- Supun Kaushalya
+- Chelsy Jayakody
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

@@ -64,6 +64,15 @@ void showSplashScreen(const char *message)
 }
 
 
+void showNumber(char key)
+{   
+    tft.fillScreen(WHITE);
+    tft.setFreeFont(&FreeSansBold24pt7b);
+    tft.setTextColor(BLUE);
+    tft.setCursor(200, 200);
+    tft.println(key);
+}
+
 void showLocation(String message)
 {   
     tft.fillScreen(WHITE);

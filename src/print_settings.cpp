@@ -13,16 +13,16 @@ enum ProcessingPhase {
 };
 
 char keys[ROWS][COLS] = {
-    {'1','2','3','S'},
-    {'4','5','6','O'},
-    {'S','R','C','M'},
-    {'D','0','E','P'},
-    {'R','L','N','C'}
+    {'1','4','7','C'},
+    {'2','5','8','0'},
+    {'3','6','9','E'},
+    {'S','M','L','D'},
+    {'O','R','N','P'},
 };
 
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
-byte rowPins[ROWS] = {39, 36, 34, 35, 23};
-byte colPins[COLS] = {16, 17, 19, 22};
+byte rowPins[ROWS] = {15, 39, 36, 35, 34};
+byte colPins[COLS] = {16, 17, 22, 23};
 
 static ProcessingPhase processingPhase = NotStarted;
 static bool processingComplete = false;
@@ -57,6 +57,10 @@ void handleProcessing(char key)
             else if (key == 'P')
             {
                 processingPhase = Confirm;
+            }
+            else if (key == 'D')
+            {
+                processingPhase = Discard;
             }
             break;
 
@@ -115,6 +119,7 @@ bool getConfirmation(char key)
         showPrintSettings();
         Serial.println(printSettings.copies);
         isPrintSettingsShown = true;
+        isStageCompleted = true;
     }
     switch (key)
     {

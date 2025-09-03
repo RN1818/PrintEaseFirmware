@@ -65,6 +65,7 @@ void loop()
                 showSplashScreen("Time out.");
                 isTimerStarted = false;
                 currentState = STATE_SPLASH;
+                screenUpdated == false;
                 return;
             }
             handleProcessing(key);

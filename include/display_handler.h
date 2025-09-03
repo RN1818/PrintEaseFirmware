@@ -25,3 +25,4 @@ void getPageRangeOptions(int pageSelection = 0, int startPage = 1, int endPage =
 void showCopies(int copies = 1);
 void showPrintSettings();
 void showLocation(String message);
+void showNumber(char key);

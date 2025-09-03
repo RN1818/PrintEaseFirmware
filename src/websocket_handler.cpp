@@ -72,7 +72,7 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
             {   
                 currentState = STATE_SPLASH;
                 reaminingFilesGlobal = 0;
-                showSplashScreen("Reset command received");
+                showSplashScreen("System restarted.");
                 return;
             }
             else if (strcmp(action, "PRINT_RATES") == 0)

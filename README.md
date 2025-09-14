@@ -30,7 +30,7 @@ PrintEaseFirmware is the embedded software for the PrintEase automated printing 
 ## Technologies Used
 
 - **Language:** C++ (Arduino framework)
-- **Platform:** ESP32 or compatible Arduino device
+- **Platform:** ESP32
 - **Network:** Wi-Fi, HTTP/REST, WebSocket
 
 ## Setup & Installation
@@ -43,20 +43,20 @@ PrintEaseFirmware is the embedded software for the PrintEase automated printing 
 
 2. **Install Arduino IDE and required libraries:**
     - ESP32 board support
-    - WiFi, HTTPClient, WebSockets, Touchscreen libraries (see code for specifics)
+    - WiFi, HTTPClient, WebSockets, Display libraries (see code for specifics)
 
 3. **Configure firmware:**
-    - Set Wi-Fi credentials and backend server URL in `config.h` or setup section.
+    - Set Wi-Fi credentials in `wifi_handler.h`.
 
 4. **Upload to device:**
     - Connect your ESP32/Arduino device to your computer.
-    - Use Arduino IDE to compile and upload the firmware.
+    - Compile and upload the firmware.
 
 ## Usage
 
 - Power on the kiosk device.
-- Use the touchscreen or physical interface to select print options.
-- Firmware will communicate with the backend and display job status.
+- Use the physical interface to select print options.
+- Firmware will communicate with the backend and process the print.
 
 ## Contributors
 
